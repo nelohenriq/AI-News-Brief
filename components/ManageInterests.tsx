@@ -6,9 +6,10 @@ const ManageInterests: React.FC = () => {
 
     const interests = useMemo(() => {
         const decayed = getDecayedInterests();
-        return Object.entries(decayed)
-            .sort(([, scoreA], [, scoreB]) => scoreB - scoreA)
-            .map(([tag, score]) => ({ tag, score }));
+        // FIX: Refactor sorting logic to be more type-safe and avoid arithmetic errors on potentially mis-inferred types.
+        return Object.keys(decayed)
+            .sort((tagA, tagB) => decayed[tagB] - decayed[tagA])
+            .map((tag) => ({ tag, score: decayed[tag] }));
     }, [getDecayedInterests]);
 
     return (

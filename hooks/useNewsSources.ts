@@ -3,12 +3,7 @@ import { Source } from '../types';
 
 const SOURCES_STORAGE_KEY = 'aiNewsBriefSources';
 
-const DEFAULT_SOURCES: Source[] = [
-  { id: '1', name: 'FutureTechChronicle', url: 'https://example.com/futuretech/rss' },
-  { id: '2', name: 'Global South Press', url: 'https://example.com/globalsouth/rss' },
-  { id: '3', name: 'UrbanAgri Digest', url: 'https://example.com/urbanagri/rss' },
-  { id: '4', name: 'Cosmos Today', url: 'https://example.com/cosmos/rss' }
-];
+const DEFAULT_SOURCES: Source[] = [];
 
 export const useNewsSources = () => {
   const [sources, setSources] = useState<Source[]>([]);

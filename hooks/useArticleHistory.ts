@@ -9,7 +9,8 @@ export const useArticleHistory = () => {
     try {
       const storedHistory = localStorage.getItem(ARTICLE_HISTORY_STORAGE_KEY);
       if (storedHistory) {
-        setProcessedLinks(new Set(JSON.parse(storedHistory)));
+        // FIX: Add type assertion to JSON.parse to ensure the loaded data is treated as an array of strings.
+        setProcessedLinks(new Set(JSON.parse(storedHistory) as string[]));
       }
     } catch (error) {
       console.error("Failed to load article history from localStorage:", error);
@@ -27,7 +28,8 @@ export const useArticleHistory = () => {
 
   const addArticles = useCallback((links: string[]) => {
     setProcessedLinks(prevHistory => {
-      const newHistory = new Set(prevHistory);
+      // FIX: Explicitly type the new Set to prevent TypeScript from incorrectly inferring its type as Set<unknown>.
+      const newHistory = new Set<string>(prevHistory);
       links.forEach(link => newHistory.add(link));
       saveHistory(newHistory);
       return newHistory;

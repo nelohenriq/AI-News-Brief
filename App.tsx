@@ -14,29 +14,61 @@ import { Summary, NewsCluster } from './types';
 import { useSettings } from './hooks/useSettings';
 import * as geminiService from './services/geminiService';
 import * as ollamaService from './services/ollamaService';
+import * as groqService from './services/groqService';
+import { newsClusters } from './data/newsSources';
 
 type TabId = 'for-you' | 'feed' | 'history' | 'sources' | 'summarize' | 'settings';
 
 // This function simulates fetching a new article cluster from a newly added source.
 // In a real application, this would be replaced by a backend service that
 // fetches, parses, and clusters articles from the given RSS feed URL.
-const getSimulatedArticleClusterForSource = (sourceName: string): NewsCluster => {
-  return {
-    id: `cluster-sim-${Date.now()}`,
-    topic: `Recent Developments from ${sourceName}`,
-    articles: [
-      {
-        source: sourceName,
-        headline: `Exclusive Report: ${sourceName} Unveils New Initiative`,
-        content: `In a surprising move, ${sourceName} has announced a new strategic initiative aimed at revolutionizing its sector. This article provides a simulated overview of what this means for the industry and consumers. The content is generic to demonstrate the AI's ability to process and summarize new information as sources are added to the system. This demonstrates the reactive nature of the news feed.`
-      },
-      {
-        source: 'Associated News Sim',
-        headline: `Industry Reacts to ${sourceName}'s Latest Announcement`,
-        content: `Following the recent announcement from ${sourceName}, analysts are weighing in. This simulated companion article offers a different perspective, creating a multi-source cluster for the AI to synthesize. This process mimics how the application would handle real-world news events covered by multiple outlets.`
-      }
-    ]
-  };
+const getSimulatedArticleClustersForSource = (sourceName: string): NewsCluster[] => {
+  const timestamp = Date.now();
+  return [
+    {
+      id: `cluster-sim-${timestamp}-1`,
+      topic: `Technological Breakthroughs reported by ${sourceName}`,
+      articles: [
+        {
+          source: sourceName,
+          headline: `Exclusive: ${sourceName} Reveals Next-Gen AI Chip`,
+          content: `${sourceName} has just announced a new processor that promises to double the speed of machine learning tasks. This simulated article details the architecture and potential impact on the industry.`
+        },
+        {
+          source: 'Simulated Tech Review',
+          headline: `Analysis of ${sourceName}'s New AI Chip`,
+          content: `Following the announcement from ${sourceName}, industry experts are analyzing the claims. This companion article provides a skeptical yet optimistic viewpoint on the new technology.`
+        }
+      ]
+    },
+    {
+      id: `cluster-sim-${timestamp}-2`,
+      topic: `Market Analysis and Predictions from ${sourceName}`,
+      articles: [
+        {
+          source: sourceName,
+          headline: `Quarterly Report: ${sourceName} Predicts Major Market Shift`,
+          content: `In their latest financial report, ${sourceName} has outlined a predicted shift in consumer behavior due to recent economic events. This simulation explores their reasoning and data.`
+        }
+      ]
+    },
+    {
+      id: `cluster-sim-${timestamp}-3`,
+      topic: `Corporate Strategy Changes at ${sourceName}`,
+      articles: [
+        {
+          source: sourceName,
+          headline: `${sourceName} to Enter New International Markets`,
+          content: `CEO of ${sourceName} confirmed plans for expansion into three new countries next year. This simulated article covers the strategic reasoning and potential challenges.`
+        },
+        {
+          source: 'Simulated Business Journal',
+          headline: `Is ${sourceName}'s Expansion a Wise Move?`,
+          content: `This article provides an independent analysis of ${sourceName}'s expansion plans, comparing it to historical moves by other major corporations in the sector.`
+        }
+      ]
+    }
+  ];
 };
 
 
@@ -52,15 +84,53 @@ const TABS = [
 const RECOMMENDATION_THRESHOLD = 4; // Interest score threshold for a summary to be "For You"
 
 const App: React.FC = () => {
-  const [activeTab, setActiveTab] = useState<TabId>('for-you');
+  const [activeTab, setActiveTab] = useState<TabId>('feed');
   const [latestSummaries, setLatestSummaries] = useState<Summary[]>([]);
   const [comparingTopicId, setComparingTopicId] = useState<string | null>(null);
   const [isFetching, setIsFetching] = useState(false);
 
   const { addInterest, getDecayedInterests } = useUserInterests();
   const { settings } = useSettings();
-  const { addSummaries } = useSummaryHistory();
+  const { summaries, addSummaries } = useSummaryHistory();
   
+  useEffect(() => {
+    const loadInitialData = async () => {
+      // If history is empty (first-time user), fetch initial summaries
+      if (summaries.length === 0 && newsClusters.length > 0) {
+        setIsFetching(true);
+        try {
+          let initialSummaries: Summary[] = [];
+          if (settings.provider === 'ollama') {
+            if (settings.ollamaUrl && settings.ollamaModel) {
+              initialSummaries = await ollamaService.summarizeNewsClusters(newsClusters, settings.ollamaUrl, settings.ollamaModel);
+            } else {
+              console.warn("Ollama provider selected but not configured. Skipping initial fetch.");
+            }
+          } else if (settings.provider === 'groq') {
+            if (settings.groqApiKey && settings.groqModel) {
+              initialSummaries = await groqService.summarizeNewsClusters(newsClusters, settings.groqApiKey, settings.groqModel);
+            } else {
+               console.warn("Groq provider selected but not configured. Skipping initial fetch.");
+            }
+          } else {
+            initialSummaries = await geminiService.summarizeNewsClusters(newsClusters);
+          }
+          setLatestSummaries(initialSummaries);
+          addSummaries(initialSummaries); // Save to history for next time
+        } catch (error) {
+          console.error("Failed to fetch initial summaries:", error);
+        } finally {
+          setIsFetching(false);
+        }
+      } else {
+        // If history exists (returning user), populate feed from history
+        setLatestSummaries(summaries);
+      }
+    };
+
+    loadInitialData();
+  }, []); // Empty dependency array ensures this runs only once on mount
+
   const handleInteraction = useCallback((tags: string[]) => {
     tags.forEach(tag => addInterest(tag));
   }, [addInterest]);
@@ -73,14 +143,16 @@ const App: React.FC = () => {
     setActiveTab('feed');
     setIsFetching(true);
     
-    const simulatedCluster = getSimulatedArticleClusterForSource(sourceName);
+    const simulatedClusters = getSimulatedArticleClustersForSource(sourceName);
     
     try {
-      let newSummaries: Summary[];
+      let newSummaries: Summary[] = [];
       if (settings.provider === 'ollama') {
-        newSummaries = await ollamaService.summarizeNewsClusters([simulatedCluster], settings.ollamaUrl, settings.ollamaModel);
+        newSummaries = await ollamaService.summarizeNewsClusters(simulatedClusters, settings.ollamaUrl, settings.ollamaModel);
+      } else if (settings.provider === 'groq') {
+        newSummaries = await groqService.summarizeNewsClusters(simulatedClusters, settings.groqApiKey, settings.groqModel);
       } else {
-        newSummaries = await geminiService.summarizeNewsClusters([simulatedCluster]);
+        newSummaries = await geminiService.summarizeNewsClusters(simulatedClusters);
       }
       
       if (newSummaries.length > 0) {

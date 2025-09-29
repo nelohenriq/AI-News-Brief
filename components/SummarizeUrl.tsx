@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import * as geminiService from '../services/geminiService';
 import * as ollamaService from '../services/ollamaService';
+import * as groqService from '../services/groqService';
 import { useSettings } from '../hooks/useSettings';
 import { useSummaryHistory } from '../hooks/useSummaryHistory';
 import { Summary } from '../types';
@@ -30,6 +31,8 @@ const SummarizeUrl: React.FC = () => {
         let result;
         if (settings.provider === 'ollama') {
             result = await ollamaService.summarizeUrl(url, content, settings.ollamaUrl, settings.ollamaModel);
+        } else if (settings.provider === 'groq') {
+            result = await groqService.summarizeUrl(url, content, settings.groqApiKey, settings.groqModel);
         } else {
             result = await geminiService.summarizeUrl(url, content);
         }

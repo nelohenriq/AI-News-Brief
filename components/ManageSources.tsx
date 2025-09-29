@@ -5,6 +5,7 @@ import { Source } from '../types';
 import AddSourceForm from './AddSourceForm';
 import * as geminiService from '../services/geminiService';
 import * as ollamaService from '../services/ollamaService';
+import * as groqService from '../services/groqService';
 
 interface ManageSourcesProps {
   onNewSourceAdded: (sourceName: string) => void;
@@ -72,6 +73,8 @@ const ManageSources: React.FC<ManageSourcesProps> = ({ onNewSourceAdded }) => {
     try {
       if (settings.provider === 'ollama') {
         await ollamaService.validateRssFeed(trimmedUrl, settings.ollamaUrl, settings.ollamaModel);
+      } else if (settings.provider === 'groq') {
+        await groqService.validateRssFeed(trimmedUrl, settings.groqApiKey);
       } else {
         await geminiService.validateRssFeed(trimmedUrl);
       }

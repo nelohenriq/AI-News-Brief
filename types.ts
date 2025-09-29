@@ -44,10 +44,12 @@ export interface RssArticle {
   contentSnippet: string;
 }
 
-export type Provider = 'gemini' | 'ollama';
+export type Provider = 'gemini' | 'ollama' | 'groq';
 
 export interface Settings {
   provider: Provider;
   ollamaUrl: string;
   ollamaModel: string;
+  groqApiKey: string;
+  groqModel: string;
 }
