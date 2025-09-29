@@ -1,0 +1,5 @@
+{
+  "name": "AI News Brief",
+  "description": "An intelligent news aggregator that fetches articles from various sources, uses AI to generate concise summaries, and personalizes your feed based on your reading habits.",
+  "requestFramePermissions": []
+}
